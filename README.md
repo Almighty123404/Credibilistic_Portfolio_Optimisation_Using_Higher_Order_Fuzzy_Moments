@@ -1,118 +1,295 @@
-# Credibilistic Portfolio Optimisation — CTFN + MOGA
+# Credibilistic Portfolio Optimisation Using Higher-Order Fuzzy Moments
 
-Python replication of:
+A full Python replication of:
 
-> Mandal, P.K., Thakur, M., & Mittal, G. (2024).  
+> **Mandal, P.K., Thakur, M., & Mittal, G. (2024)**  
 > *Credibilistic portfolio optimization with higher-order moments using coherent triangular fuzzy numbers.*  
 > Applied Soft Computing, 151, 111155.  
 > https://doi.org/10.1016/j.asoc.2023.111155
 
 ---
 
-## What this replicates
+## What This Project Does
 
-Three multi-objective portfolio optimisation models using **Coherent Triangular Fuzzy Numbers (CTFN)** in the credibilistic framework:
+Classical portfolio optimisation (Markowitz) only uses mean and variance. This paper — and this replication — goes further by incorporating **four higher-order moments** of the portfolio return distribution, modelled using **Coherent Triangular Fuzzy Numbers (CTFN)** in the **credibilistic framework**:
 
-| Model | Objectives |
-|-------|-----------|
-| **Model I** | Maximise Mean, Minimise Semivariance, Maximise Skewness, Minimise Semikurtosis |
-| **Model II** | Maximise Mean, Minimise MASD, Maximise Skewness, Minimise Semikurtosis |
-| **Model III** | Maximise Mean, Minimise CVaR, Maximise Skewness, Minimise Semikurtosis |
+| Moment | Why it matters |
+|--------|---------------|
+| **Mean** | Expected return — maximise |
+| **Semivariance / MASD / CVaR** | Downside risk — minimise |
+| **Skewness** | Prefer right-skewed returns (big upside) — maximise |
+| **Semikurtosis** | Penalise heavy left tail (catastrophic losses) — minimise |
 
-Applied to two markets:
-- **NSE** (NIFTY 50 constituents, 2014–2022)
-- **NYSE** (DJIA constituents, 2014–2022)
+Three models are formulated, each using a different risk measure:
 
----
+| Model | Risk measure |
+|-------|-------------|
+| Model I | Semivariance (SV) |
+| Model II | Mean Absolute Semi-Deviation (MASD) |
+| Model III | Conditional Value-at-Risk (CVaR) |
 
-## Notebooks
-
-| Notebook | Purpose |
-|----------|---------|
-| `credibilistic_portfolio.ipynb` | Data pipeline — downloads prices, computes returns, selects 18 stocks per market, splits train/test |
-| `credibilistic_moga.ipynb` | Main implementation — CTFN moment formulas (Eqs. 3–8), MOGA operators, NSGA-II selection, K-medoids clustering, results |
+All three are solved as **4-objective optimisation problems** using a **Multi-Objective Genetic Algorithm (MOGA)** adapted with cardinality constraints, and tested on two real stock markets.
 
 ---
 
-## Key implementation details
+## Datasets
 
-- **CTFN fitting** (Section 4.1): percentile-based (Q3, Q20, Q50, Q80, Q97) with random shape parameter `k`
-- **Credibilistic moments**: closed-form Eqs. 3–8 (mean, semivariance, MASD, CVaR, skewness, semikurtosis)
-- **MOGA operators**: CCBEX crossover, swap mutation, power mutation, repair mechanism (Appendices B.1–B.4)
-- **Selection**: NSGA-II (non-dominated sorting + crowding distance)
-- **Representative solutions**: K-medoids clustering (KMeans-medoid approximation, k=25)
-- **Filtration**: mean ≥ 2% monthly AND skewness ≥ 0
+Two markets, both using **monthly returns from July 2014 to June 2022** (96 months total):
+
+| Market | Index | Candidate pool | Final selection |
+|--------|-------|---------------|-----------------|
+| **NSE** (India) | NIFTY 50 | All constituents during 2014–2022 | 18 stocks |
+| **NYSE** (USA) | DJIA | All constituents during 2014–2022 | 18 stocks |
+
+**Train/test split:** 72 months training (Jul 2014 – Jun 2020), 24 months test (Jul 2020 – Jun 2022).
+
+### NSE stocks selected (18)
+Adani Ports, SBI, JSW Steel, Larsen & Toubro, Lupin, Mahindra & Mahindra, Maruti Suzuki, Nestle India, NTPC, ONGC, Power Grid, Reliance Industries, Shree Cement, Indian Oil, Sun Pharma, Tata Consumer, Tata Steel, TCS
+
+### NYSE stocks selected (18)
+Apple, Procter & Gamble, McDonald's, 3M, Merck, Microsoft, Nike, Pfizer, Raytheon Technologies, Amgen, AT&T, Travelers, UnitedHealth, Visa, Verizon, Walmart, Coca-Cola, JPMorgan Chase
+
+### Stock selection methodology
+Starting from all index members present at any point during 2014–2022 (~37 DJIA / ~52 NIFTY candidates), stocks are filtered by:
+1. **Data completeness**: must have full 96-month price history
+2. **Tiebreaker** (when >18 pass): lowest mean absolute monthly return during the training window
 
 ---
 
-## Data
+## Theory — How the Fuzzy Model Works
 
-`data/` contains pre-processed monthly return series (Jul 2014 – Jun 2022):
+### Step 1: Portfolio return time series
+For a portfolio **x** with κ=5 active assets:
+$$R_t(\mathbf{x}) = \sum_{i=1}^{n} r_{ti} \cdot x_i \cdot z_i, \quad t = 1, \ldots, T$$
+
+where $r_{ti}$ is the decimal monthly return of asset $i$ at time $t$, and $z_i \in \{0,1\}$ is the activity indicator.
+
+### Step 2: Fit a CTFN to the portfolio returns
+A **Coherent Triangular Fuzzy Number** $\tilde{A} = (b_1, b_2, b_3)_k$ is fitted to the time series $\{R_t\}$ using percentiles (Section 4.1 of the paper):
+
+| Parameter | Formula |
+|-----------|---------|
+| $b_1$ | $\min(R_{\min},\ Q_3)$ — left anchor |
+| $b_2$ | $Q_{50}$ — median (mode) |
+| $b_3$ | $Q_{97}$ — right anchor |
+| $k$ | Shape parameter, computed from $Q_{20}$ or $Q_{80}$ using $k = \frac{\ln(0.5)}{\ln(\text{denom})}$ |
+
+The shape parameter $k$ controls tail asymmetry — larger $k$ means heavier left tail.
+
+### Step 3: Compute the four credibilistic moments (closed-form)
+
+The **credibility measure** is the average of possibility and necessity — a self-dual measure that avoids the inconsistency of pure possibility theory. All moments have closed-form expressions derived from the CTFN membership function:
+
+$$\mu_{\tilde{A}}(t) = \begin{cases} \left(\frac{t-b_1}{\alpha}\right)^k & b_1 \leq t \leq b_2 \\ \left(\frac{b_3-t}{\beta}\right)^k & b_2 \leq t \leq b_3 \end{cases}$$
+
+where $\alpha = b_2 - b_1$, $\beta = b_3 - b_2$.
+
+**Constants used across all formulas:**
+$$c_j = \frac{1}{(k+1)(k+2)\cdots(k+j)}, \quad c'_j = \frac{1}{(1+k)(1+2k)\cdots(1+jk)}$$
+
+**Eq. 3 — Credibilistic Mean:**
+$$E[\tilde{A}] = b_2 + \frac{\beta - k\alpha}{2(k+1)}$$
+
+**Eq. 4 — Credibilistic Semivariance** (two cases based on whether $e \leq b_2$ or $e > b_2$):
+$$\text{SV}[\tilde{A}] = \begin{cases} k^2 \rho_1^{1/k+2} c'_2 / \alpha^{1/k} & e \leq b_2 \\ \Xi_1 - \rho_3^{k+2} c_2 / \beta^k & e > b_2 \end{cases}$$
+
+**Eq. 5 — Credibilistic MASD** (two cases based on whether $k\alpha \geq \beta$):
+$$\text{MASD}[\tilde{A}] = \begin{cases} \frac{k\alpha}{2(k+1)}\left(1 + \frac{\beta - k\alpha}{2\alpha(k+1)}\right)^{(k+1)/k} & k\alpha \geq \beta \\ \frac{\beta}{2(k+1)}\left(1 + \frac{k\alpha - \beta}{2\beta(k+1)}\right)^{k+1} & k\alpha < \beta \end{cases}$$
+
+**Eq. 6 — Credibilistic CVaR** at confidence level $p$:
+$$\text{CVaR}_p[\tilde{A}] = \begin{cases} b_2 + \frac{[2p(1-(2p)^k) + k(2p-1)]\alpha + \beta}{2(k+1)(1-p)} & p < 0.5 \\ \frac{\alpha + \beta - k\beta(2(1-p))^{1/k}}{k+1} & p \geq 0.5 \end{cases}$$
+
+**Eq. 7 — Credibilistic Skewness** (let $\rho_2 = b_2 - e$):
+$$S[\tilde{A}] = \rho_2^3 + \frac{3}{2}(\beta \cdot \Xi_1 - k\alpha \cdot \Xi_2)$$
+where $\Xi_1 = \rho_2^2 c_1 + 2\beta\rho_2 c_2 + 2\beta^2 c_3$ and $\Xi_2 = \rho_2^2 c'_1 - 2k\alpha\rho_2 c'_2 + 2k^2\alpha^2 c'_3$
+
+**Eq. 8 — Credibilistic Semikurtosis** (two cases):
+$$\text{SK}[\tilde{A}] = \begin{cases} 12k^4 \rho_1^{1/k+4} c'_4 / \alpha^{1/k} & e \leq b_2 \\ 2\beta\Omega_1 - 2k\alpha\Omega_2 + \rho_2^4 - 12\rho_3^{k+4} c_4 / \beta^k & e > b_2 \end{cases}$$
+
+---
+
+## MOGA — How the Optimiser Works
+
+Each portfolio is encoded as a weight vector $\mathbf{x} \in \mathbb{R}^n$ where exactly $\kappa=5$ entries are non-zero (cardinality constraint).
+
+### Portfolio constraints
+| Constraint | Value |
+|-----------|-------|
+| Budget | $\sum x_i = 1$ |
+| Bounds | $0.08 \leq x_i \leq 0.30$ for active assets |
+| Cardinality | Exactly 5 active assets |
+| No short-selling | $x_i \geq 0$ |
+
+### Algorithm flow (Algorithm 1 of the paper)
 
 ```
-data/
-├── nse_train.csv        # NSE training returns  (72 months × 18 stocks)
-├── nse_test.csv         # NSE test returns      (24 months × 18 stocks)
-├── nyse_train.csv       # NYSE training returns (72 months × 18 stocks)
-├── nyse_test.csv        # NYSE test returns     (24 months × 18 stocks)
-├── nifty_stock_key.json # S1–S18 → ticker mapping (NSE)
-└── djia_stock_key.json  # S1–S18 → ticker mapping (NYSE)
+For each of R=30 independent runs:
+    1. Initialise population of 180 random feasible portfolios
+    2. For 2000 generations:
+        a. CCBEX crossover (Appendix B.1) — bounded exponential crossover on active assets
+        b. Swap mutation (Appendix B.2) — swap one active asset with one inactive asset
+        c. Power mutation (Appendix B.3) — perturb one active asset weight
+        d. Repair mechanism (Appendix B.4) — project back to budget constraint
+        e. NSGA-II selection — non-dominated sorting + crowding distance
+    3. Extract Pareto front
+Pool all 30 Pareto fronts → extract global Pareto front
+Filter: keep only portfolios with mean ≥ 2% AND skewness ≥ 0
+K-medoids clustering (k=25) → select 25 diverse representative portfolios
 ```
 
-Returns are stored as **decimal fractions** (e.g. 0.025 = 2.5% monthly return).
+### Crossover: CCBEX (Cardinality Constrained Bounded Exponential Crossover)
+Only operates on genes where **both parents are active**. Uses an exponential distribution to generate bounded offspring weights — respecting $[l, u]$ bounds while exploring the search space efficiently.
+
+### Mutation operators
+- **Swap mutation**: replaces one randomly chosen active asset with a randomly chosen inactive one — explores different asset combinations
+- **Power mutation**: perturbs one active asset's weight using a power-law distribution — fine-tunes allocations
+
+### Repair mechanism
+After crossover/mutation, the budget constraint $\sum x_i = 1$ may be violated. The repair mechanism scales weights proportionally back to $[l, u]$ bounds while maintaining the sum-to-one constraint.
+
+### NSGA-II selection
+From the combined parent + offspring pool (360 solutions):
+1. Non-dominated sorting → fronts $F_1, F_2, \ldots$
+2. Fill next generation from $F_1$ first, then $F_2$, etc.
+3. When a front partially fits: rank by crowding distance (prefer solutions in less crowded regions of objective space)
+
+---
+
+## Project Structure
+
+```
+.
+├── credibilistic_portfolio.ipynb   # Stage 1: data pipeline & stock selection
+├── credibilistic_moga.ipynb        # Stage 2: CTFN fitting + MOGA optimisation
+├── data/
+│   ├── nse_train.csv               # NSE training returns (72 × 18, decimal fractions)
+│   ├── nse_test.csv                # NSE test returns    (24 × 18)
+│   ├── nyse_train.csv              # NYSE training returns
+│   ├── nyse_test.csv               # NYSE test returns
+│   ├── nifty_stock_key.json        # S1–S18 → ticker/name mapping (NSE)
+│   ├── djia_stock_key.json         # S1–S18 → ticker/name mapping (NYSE)
+│   ├── nse_prices.csv              # Raw monthly prices (NSE)
+│   ├── nyse_prices.csv             # Raw monthly prices (NYSE)
+│   ├── nse_returns.csv             # Full return series (NSE)
+│   ├── nyse_returns.csv            # Full return series (NYSE)
+│   ├── nifty_completeness_report.csv
+│   ├── djia_completeness_report.csv
+│   └── *.png                       # Plots: heatmaps, cumulative returns
+└── README.md
+```
+
+---
+
+## Bugs Found and Fixed During Replication
+
+Three errors were identified in the formulas as implemented from the paper:
+
+### Bug 1 — Mean formula (Eq. 3)
+**Wrong:**  $E[\tilde{A}] = b_2 + \frac{1}{2}\left(\beta - \frac{k\alpha}{k+1}\right) = b_2 + \frac{\beta}{2} - \frac{k\alpha}{2(k+1)}$
+
+**Correct:** $E[\tilde{A}] = b_2 + \frac{\beta - k\alpha}{2(k+1)} = b_2 + \frac{\beta}{2(k+1)} - \frac{k\alpha}{2(k+1)}$
+
+The $\beta$ coefficient should be $\frac{1}{2(k+1)}$, not $\frac{1}{2}$. This can be verified for $k=1$ using the standard TFN result $E = \frac{b_1 + 2b_2 + b_3}{4}$.
+
+**Impact:** Wrong mean → wrong $\rho_2 = b_2 - e$ → wrong sign on skewness (all portfolios falsely showed negative skewness, causing the filtration step to reject everything).
+
+### Bug 2 & 3 — Semikurtosis coefficients (Eq. 8)
+**Wrong coefficient:** `0.5` in both cases  
+**Correct coefficient:** `12`
+
+Derivation: the integral $\int_0^{\rho_1/\alpha} (\alpha t - \rho_1)^4 \cdot t^{1/k-1}\,dt$ evaluates via the Beta function $B(1/k, 5) = 24k^5 c'_4$. After the $(1/2k)$ prefactor: $(1/2k) \cdot 24k^5 c'_4 = 12k^4 c'_4$ ✓
+
+**Verification:** For $k=1$, Eq. 7 must reduce to $S[\tilde{A}] = \frac{1}{32}(\beta+\alpha)^2(\beta-\alpha)$. With all three fixes applied, this check passes exactly.
 
 ---
 
 ## Setup
 
 ```bash
+# Clone
+git clone https://github.com/PP112004/Credibilistic_Portfolio_Optimisation_Using_Higher_Order_Fuzzy_Moments.git
+cd Credibilistic_Portfolio_Optimisation_Using_Higher_Order_Fuzzy_Moments
+
+# Environment
 python -m venv venv
-source venv/bin/activate
+source venv/bin/activate          # Windows: venv\Scripts\activate
+
+# Dependencies
 pip install numpy pandas scikit-learn matplotlib yfinance jupyter
 ```
+
+**Important:** Do **not** install `scikit-learn-extra` — it is incompatible with NumPy 2.x. This project uses standard `sklearn.cluster.KMeans` as a drop-in replacement.
 
 ---
 
 ## Running
 
-**Quick test** (~2.5 min, verifies pipeline):
-```bash
-jupyter nbconvert --to notebook --execute credibilistic_moga.ipynb \
-  --output credibilistic_moga_out.ipynb --ExecutePreprocessor.timeout=1800
+### Quick test (~2.5 minutes) — verifies the pipeline is working
+Open `credibilistic_moga.ipynb` in Jupyter and ensure cell `c009` has:
+```python
+QUICK_TEST = True   # pop=60, gen=200, runs=3
 ```
+Then run all cells.
 
-**Full replication** (~4–8 hrs, matches paper Tables 6–11):  
-Set `QUICK_TEST = False` in cell `c009`, then:
+### Full replication (~4–8 hours) — reproduces paper Tables 6–11
+Change cell `c009` to:
+```python
+QUICK_TEST = False  # pop=180, gen=2000, runs=30
+```
+Run overnight from terminal (survives closing Jupyter):
 ```bash
+source venv/bin/activate
 nohup jupyter nbconvert --to notebook --execute credibilistic_moga.ipynb \
   --output credibilistic_moga_full.ipynb \
   --ExecutePreprocessor.timeout=36000 > moga_run.log 2>&1 &
+
+tail -f moga_run.log   # monitor progress
 ```
 
 ---
 
-## Constraints (Table 3 of paper)
+## Results Structure
 
-| Parameter | Value |
-|-----------|-------|
-| Assets per market (n) | 18 |
-| Cardinality (κ) | 5 |
-| Lower bound (l) | 0.08 |
-| Upper bound (u) | 0.30 |
-| CVaR confidence (p) | 0.95 |
-| Population size | 180 |
-| Generations | 2000 |
-| Independent runs | 30 |
-| Representative solutions | 25 |
+Each model × market combination produces a table of 25 representative portfolios, each with:
+
+| Column | Description |
+|--------|-------------|
+| `b1, b2, b3` | CTFN parameters (left anchor, median, right anchor) |
+| `k` | CTFN shape parameter |
+| `cp, mp` | Crossover and mutation probabilities (from grid search) |
+| `Mean` | Credibilistic expected monthly return |
+| `SV / MASD / CVaR` | Risk measure (model-dependent) |
+| `Skewness` | Credibilistic skewness (positive = right-skewed, desirable) |
+| `SemiKurt` | Credibilistic semikurtosis (lower = lighter left tail) |
 
 ---
 
-## Formula fixes vs paper
+## Dependencies
 
-Three bugs were identified and fixed during replication:
+| Package | Version tested | Purpose |
+|---------|---------------|---------|
+| `numpy` | 2.4.4 | Numerical computation |
+| `pandas` | 2.x | Data handling |
+| `scikit-learn` | 1.x | KMeans clustering |
+| `matplotlib` | 3.x | Plots |
+| `yfinance` | 0.2.x | Price download (portfolio notebook only) |
+| `jupyter` | — | Notebook execution |
 
-1. **Mean (Eq. 3)**: Paper uses `b2 + (β − kα) / (2(k+1))` — an earlier reading mistakenly parsed it as `b2 + β/2 − kα/(2(k+1))`
-2. **Semikurtosis Case 1 coefficient (Eq. 8)**: Correct coefficient is `12`, not `0.5`
-3. **Semikurtosis Case 2 last term (Eq. 8)**: Correct coefficient is `12`, not `0.5`
+---
 
-Both semikurtosis coefficients follow directly from the Beta function `B(1/k, 5) = 24k⁵·c′₄`, giving `(1/2k)·24k⁵·c′₄ = 12k⁴·c′₄`.
+## Citation
+
+If you use this replication in your work, please cite the original paper:
+
+```bibtex
+@article{mandal2024credibilistic,
+  title={Credibilistic portfolio optimization with higher-order moments using coherent triangular fuzzy numbers},
+  author={Mandal, Prasenjit Kumar and Thakur, Manoj and Mittal, Garima},
+  journal={Applied Soft Computing},
+  volume={151},
+  pages={111155},
+  year={2024},
+  publisher={Elsevier},
+  doi={10.1016/j.asoc.2023.111155}
+}
+```
