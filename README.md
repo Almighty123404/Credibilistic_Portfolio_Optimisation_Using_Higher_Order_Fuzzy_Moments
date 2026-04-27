@@ -213,30 +213,6 @@ From the combined parent + offspring pool (360 solutions):
 └── README.md
 ```
 
----
-
-## Bugs Found and Fixed During Replication
-
-Three errors were identified in the formulas as implemented from the paper:
-
-### Bug 1 — Mean formula (Eq. 3)
-**Wrong:**  $E[\tilde{A}] = b_2 + \frac{1}{2}\left(\beta - \frac{k\alpha}{k+1}\right) = b_2 + \frac{\beta}{2} - \frac{k\alpha}{2(k+1)}$
-
-**Correct:** $E[\tilde{A}] = b_2 + \frac{\beta - k\alpha}{2(k+1)} = b_2 + \frac{\beta}{2(k+1)} - \frac{k\alpha}{2(k+1)}$
-
-The $\beta$ coefficient should be $\frac{1}{2(k+1)}$, not $\frac{1}{2}$. This can be verified for $k=1$ using the standard TFN result $E = \frac{b_1 + 2b_2 + b_3}{4}$.
-
-**Impact:** Wrong mean → wrong $\rho_2 = b_2 - e$ → wrong sign on skewness (all portfolios falsely showed negative skewness, causing the filtration step to reject everything).
-
-### Bug 2 & 3 — Semikurtosis coefficients (Eq. 8)
-**Wrong coefficient:** `0.5` in both cases  
-**Correct coefficient:** `12`
-
-Derivation: the integral $\int_0^{\rho_1/\alpha} (\alpha t - \rho_1)^4 \cdot t^{1/k-1}\,dt$ evaluates via the Beta function $B(1/k, 5) = 24k^5 c'_4$. After the $(1/2k)$ prefactor: $(1/2k) \cdot 24k^5 c'_4 = 12k^4 c'_4$ ✓
-
-**Verification:** For $k=1$, Eq. 7 must reduce to $S[\tilde{A}] = \frac{1}{32}(\beta+\alpha)^2(\beta-\alpha)$. With all three fixes applied, this check passes exactly.
-
----
 
 ## Setup
 
