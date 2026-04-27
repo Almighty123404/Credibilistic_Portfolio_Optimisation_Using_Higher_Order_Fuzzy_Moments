@@ -1,0 +1,21 @@
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+*_qt.ipynb
+*_full.ipynb
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+nohup.out
+
+# Paper PDF (copyright — do not distribute)
+*.pdf

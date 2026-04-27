@@ -1,0 +1,74 @@
+{
+  "S1": [
+    "AAPL",
+    "Apple"
+  ],
+  "S2": [
+    "PG",
+    "Procter & Gamble"
+  ],
+  "S3": [
+    "MCD",
+    "McDonald's"
+  ],
+  "S4": [
+    "MMM",
+    "3M"
+  ],
+  "S5": [
+    "MRK",
+    "Merck"
+  ],
+  "S6": [
+    "MSFT",
+    "Microsoft"
+  ],
+  "S7": [
+    "NKE",
+    "Nike"
+  ],
+  "S8": [
+    "PFE",
+    "Pfizer"
+  ],
+  "S9": [
+    "RTX",
+    "Raytheon Technologies"
+  ],
+  "S10": [
+    "AMGN",
+    "Amgen"
+  ],
+  "S11": [
+    "T",
+    "AT&T"
+  ],
+  "S12": [
+    "TRV",
+    "Travelers"
+  ],
+  "S13": [
+    "UNH",
+    "UnitedHealth"
+  ],
+  "S14": [
+    "V",
+    "Visa"
+  ],
+  "S15": [
+    "VZ",
+    "Verizon"
+  ],
+  "S16": [
+    "WMT",
+    "Walmart"
+  ],
+  "S17": [
+    "KO",
+    "Coca-Cola"
+  ],
+  "S18": [
+    "JPM",
+    "JPMorgan Chase"
+  ]
+}
