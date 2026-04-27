@@ -80,7 +80,12 @@ The shape parameter $k$ controls tail asymmetry — larger $k$ means heavier lef
 
 The **credibility measure** is the average of possibility and necessity — a self-dual measure that avoids the inconsistency of pure possibility theory. All moments have closed-form expressions derived from the CTFN membership function:
 
-$$\mu_{\tilde{A}}(t) = \begin{cases} \left(\frac{t-b_1}{\alpha}\right)^k & b_1 \leq t \leq b_2 \\ \left(\frac{b_3-t}{\beta}\right)^k & b_2 \leq t \leq b_3 \end{cases}$$
+$$
+\mu_{\tilde{A}}(t) = \begin{cases}
+  \left(\dfrac{t-b_1}{\alpha}\right)^k & b_1 \leq t \leq b_2 \\[8pt]
+  \left(\dfrac{b_3-t}{\beta}\right)^k & b_2 \leq t \leq b_3
+\end{cases}
+$$
 
 where $\alpha = b_2 - b_1$, $\beta = b_3 - b_2$.
 
@@ -91,20 +96,40 @@ $$c_j = \frac{1}{(k+1)(k+2)\cdots(k+j)}, \quad c'_j = \frac{1}{(1+k)(1+2k)\cdots
 $$E[\tilde{A}] = b_2 + \frac{\beta - k\alpha}{2(k+1)}$$
 
 **Eq. 4 — Credibilistic Semivariance** (two cases based on whether $e \leq b_2$ or $e > b_2$):
-$$\text{SV}[\tilde{A}] = \begin{cases} k^2 \rho_1^{1/k+2} c'_2 / \alpha^{1/k} & e \leq b_2 \\ \Xi_1 - \rho_3^{k+2} c_2 / \beta^k & e > b_2 \end{cases}$$
+$$
+\text{SV}[\tilde{A}] = \begin{cases}
+  k^2\, \rho_1^{1/k+2}\, c'_2 \;/\; \alpha^{1/k} & e \leq b_2 \\[6pt]
+  \Xi_1 - \rho_3^{k+2}\, c_2 \;/\; \beta^k & e > b_2
+\end{cases}
+$$
 
 **Eq. 5 — Credibilistic MASD** (two cases based on whether $k\alpha \geq \beta$):
-$$\text{MASD}[\tilde{A}] = \begin{cases} \frac{k\alpha}{2(k+1)}\left(1 + \frac{\beta - k\alpha}{2\alpha(k+1)}\right)^{(k+1)/k} & k\alpha \geq \beta \\ \frac{\beta}{2(k+1)}\left(1 + \frac{k\alpha - \beta}{2\beta(k+1)}\right)^{k+1} & k\alpha < \beta \end{cases}$$
+$$
+\text{MASD}[\tilde{A}] = \begin{cases}
+  \dfrac{k\alpha}{2(k+1)}\left(1 + \dfrac{\beta - k\alpha}{2\alpha(k+1)}\right)^{(k+1)/k} & k\alpha \geq \beta \\[10pt]
+  \dfrac{\beta}{2(k+1)}\left(1 + \dfrac{k\alpha - \beta}{2\beta(k+1)}\right)^{k+1} & k\alpha < \beta
+\end{cases}
+$$
 
 **Eq. 6 — Credibilistic CVaR** at confidence level $p$:
-$$\text{CVaR}_p[\tilde{A}] = \begin{cases} b_2 + \frac{[2p(1-(2p)^k) + k(2p-1)]\alpha + \beta}{2(k+1)(1-p)} & p < 0.5 \\ \frac{\alpha + \beta - k\beta(2(1-p))^{1/k}}{k+1} & p \geq 0.5 \end{cases}$$
+$$
+\text{CVaR}_p[\tilde{A}] = \begin{cases}
+  b_2 + \dfrac{\bigl[2p(1-(2p)^k) + k(2p-1)\bigr]\alpha + \beta}{2(k+1)(1-p)} & p < 0.5 \\[10pt]
+  \dfrac{\alpha + \beta - k\beta\,(2(1-p))^{1/k}}{k+1} & p \geq 0.5
+\end{cases}
+$$
 
 **Eq. 7 — Credibilistic Skewness** (let $\rho_2 = b_2 - e$):
 $$S[\tilde{A}] = \rho_2^3 + \frac{3}{2}(\beta \cdot \Xi_1 - k\alpha \cdot \Xi_2)$$
 where $\Xi_1 = \rho_2^2 c_1 + 2\beta\rho_2 c_2 + 2\beta^2 c_3$ and $\Xi_2 = \rho_2^2 c'_1 - 2k\alpha\rho_2 c'_2 + 2k^2\alpha^2 c'_3$
 
 **Eq. 8 — Credibilistic Semikurtosis** (two cases):
-$$\text{SK}[\tilde{A}] = \begin{cases} 12k^4 \rho_1^{1/k+4} c'_4 / \alpha^{1/k} & e \leq b_2 \\ 2\beta\Omega_1 - 2k\alpha\Omega_2 + \rho_2^4 - 12\rho_3^{k+4} c_4 / \beta^k & e > b_2 \end{cases}$$
+$$
+\text{SK}[\tilde{A}] = \begin{cases}
+  12k^4\, \rho_1^{1/k+4}\, c'_4 \;/\; \alpha^{1/k} & e \leq b_2 \\[6pt]
+  2\beta\,\Omega_1 - 2k\alpha\,\Omega_2 + \rho_2^4 - 12\,\rho_3^{k+4}\, c_4 \;/\; \beta^k & e > b_2
+\end{cases}
+$$
 
 ---
 
