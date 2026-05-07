@@ -195,7 +195,9 @@ From the combined parent + offspring pool (360 solutions):
 ```
 .
 ├── credibilistic_portfolio.ipynb   # Stage 1: data pipeline & stock selection
-├── credibilistic_moga.ipynb        # Stage 2: CTFN fitting + MOGA optimisation
+├── credibilistic_moga.ipynb        # Stage 2: CTFN fitting + MOGA (3-model baseline)
+├── EVaR_Improvement_Stage1.ipynb   # Stage 2 + EVaR (4-model variant — see "Improvements")
+├── Improvement_Papers/             # Reference PDFs for further improvement ideas
 ├── data/
 │   ├── nse_train.csv               # NSE training returns (72 × 18, decimal fractions)
 │   ├── nse_test.csv                # NSE test returns    (24 × 18)
@@ -214,6 +216,38 @@ From the combined parent + offspring pool (360 solutions):
 ```
 
 
+## Improvements Beyond the Paper
+
+The baseline (`credibilistic_moga.ipynb`) replicates Mandal et al. (2024) exactly. On top of that, this repo explores improvements drawn from related literature — each in its own notebook so the baseline is preserved as a fallback. The naming convention is `<Improvement>_Stage<N>.ipynb`.
+
+### Stage 1 — EVaR (Entropic Value at Risk)
+
+**File:** `EVaR_Improvement_Stage1.ipynb`
+**Reference:** Chennaf, S. & Ben Amor, J. (2023). *Entropic value at risk to find the optimal uncertain random portfolio.* Soft Computing, 27, 15185–15197. [doi:10.1007/s00500-023-08547-5](https://doi.org/10.1007/s00500-023-08547-5)
+
+**Idea:** Replace CVaR (Model III) with EVaR — a coherent risk measure that bounds CVaR from above ($\text{VaR} \leq \text{CVaR} \leq \text{EVaR}$) and is more sensitive to extreme losses:
+
+$$\text{EVaR}_\beta(X) = \inf_{t>0}\left\{ t^{-1}\ln\!\left(\frac{M_X(t)}{1-\beta}\right) \right\}, \qquad M_X(t) = E[\exp(tX)]$$
+
+**Implementation note:** the Chennaf 2023 paper does **not** give a closed-form EVaR for a CTFN, so EVaR is computed empirically from the portfolio return time series via the MGF definition (`scipy.optimize.minimize_scalar` on losses = −returns, with a log-sum-exp trick for numerical stability). Mean / skewness / semikurtosis remain closed-form fuzzy moments. EVaR appears as a new **Model IV** alongside the original three models so the swap can be compared head-to-head.
+
+**Quick-mode results** (`pop=60, gen=200, runs=3, 5 representative portfolios per market`) — averaged across representative portfolios on the 24-month test window:
+
+| Market | Metric | Model III (CVaR) | Model IV (EVaR) | Δ |
+|--------|--------|------------------|-----------------|----|
+| NSE  | Final cumulative return | 0.4320 | **0.4676** | +8.2% |
+| NSE  | Sharpe ratio            | 0.4099 | **0.4485** | +9.4% |
+| NSE  | Max drawdown            | −0.1082 | −0.1110   | slightly worse |
+| NYSE | Final cumulative return | 0.2502 | **0.2779** | +11.1% |
+| NYSE | Sharpe ratio            | 0.2336 | **0.2567** | +9.9% |
+| NYSE | Max drawdown            | −0.1051 | −0.1135   | slightly worse |
+
+EVaR-optimised portfolios delivered higher cumulative return and Sharpe on out-of-sample data on **both** markets. The marginal increase in max drawdown is consistent with EVaR being a more aggressive bound on loss severity rather than loss frequency. A full-replication run (`pop=180, gen=2000, runs=30, 25 reps`) is recommended before drawing final conclusions.
+
+**Reproduce:** open `EVaR_Improvement_Stage1.ipynb`, ensure `QUICK_TEST = True`, and run all cells (~3–5 minutes). Cell §12 prints the head-to-head CVaR vs EVaR table; output plots are saved to `data/{nse,nyse}_test_cumulative_evar.png`.
+
+---
+
 ## Setup
 
 ```bash
@@ -226,7 +260,7 @@ python -m venv venv
 source venv/bin/activate          # Windows: venv\Scripts\activate
 
 # Dependencies
-pip install numpy pandas scikit-learn matplotlib yfinance jupyter
+pip install numpy pandas scipy scikit-learn matplotlib yfinance jupyter
 ```
 
 **Important:** Do **not** install `scikit-learn-extra` — it is incompatible with NumPy 2.x. This project uses standard `sklearn.cluster.KMeans` as a drop-in replacement.
@@ -235,8 +269,8 @@ pip install numpy pandas scikit-learn matplotlib yfinance jupyter
 
 ## Running
 
-### Quick test (~2.5 minutes) — verifies the pipeline is working
-Open `credibilistic_moga.ipynb` in Jupyter and ensure cell `c009` has:
+### Quick test (~2.5 minutes baseline / ~3.5 minutes EVaR variant)
+Open either `credibilistic_moga.ipynb` (3-model baseline) or `EVaR_Improvement_Stage1.ipynb` (4-model variant) in Jupyter and ensure the relevant cell has:
 ```python
 QUICK_TEST = True   # pop=60, gen=200, runs=3
 ```
@@ -281,6 +315,7 @@ Each model × market combination produces a table of 25 representative portfolio
 |---------|---------------|---------|
 | `numpy` | 2.4.4 | Numerical computation |
 | `pandas` | 2.x | Data handling |
+| `scipy` | 1.x | EVaR inner minimisation (`minimize_scalar`) |
 | `scikit-learn` | 1.x | KMeans clustering |
 | `matplotlib` | 3.x | Plots |
 | `yfinance` | 0.2.x | Price download (portfolio notebook only) |
