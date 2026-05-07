@@ -19,3 +19,6 @@ nohup.out
 
 # Paper PDF (copyright — do not distribute)
 *.pdf
+
+# Local Claude Code session notes (auto-loaded, project-specific)
+CLAUDE.md
