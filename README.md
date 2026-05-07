@@ -227,7 +227,9 @@ The baseline (`credibilistic_moga.ipynb`) replicates Mandal et al. (2024) exactl
 
 **Idea:** Replace CVaR (Model III) with EVaR — a coherent risk measure that bounds CVaR from above ($\text{VaR} \leq \text{CVaR} \leq \text{EVaR}$) and is more sensitive to extreme losses:
 
-$$\text{EVaR}_\beta(X) = \inf_{t>0}\left\{ t^{-1}\ln\!\left(\frac{M_X(t)}{1-\beta}\right) \right\}, \qquad M_X(t) = E[\exp(tX)]$$
+$$\text{EVaR}_\beta(X) = \inf_{t>0}\left[\, t^{-1}\ln\frac{M_X(t)}{1-\beta} \,\right]$$
+
+where $M_X(t) = E[\exp(tX)]$ is the moment generating function.
 
 **Implementation note:** the Chennaf 2023 paper does **not** give a closed-form EVaR for a CTFN, so EVaR is computed empirically from the portfolio return time series via the MGF definition (`scipy.optimize.minimize_scalar` on losses = −returns, with a log-sum-exp trick for numerical stability). Mean / skewness / semikurtosis remain closed-form fuzzy moments. EVaR appears as a new **Model IV** alongside the original three models so the swap can be compared head-to-head.
 
