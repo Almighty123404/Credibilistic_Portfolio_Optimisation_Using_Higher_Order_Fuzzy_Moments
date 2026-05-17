@@ -227,7 +227,7 @@ The baseline (`credibilistic_moga.ipynb`) replicates Mandal et al. (2024) exactl
 
 **Idea:** Replace CVaR (Model III) with EVaR — a coherent risk measure that bounds CVaR from above ($\text{VaR} \leq \text{CVaR} \leq \text{EVaR}$) and is more sensitive to extreme losses:
 
-$$\text{EVaR}_\beta(X) = \inf_{t>0}\left[\, t^{-1}\ln\frac{M_X(t)}{1-\beta} \,\right]$$
+$$\text{EVaR}_\beta(X) = \inf_{t>0}\left[\ t^{-1}\ln\frac{M_X(t)}{1-\beta} \,\right]$$
 
 where $M_X(t) = E[\exp(tX)]$ is the moment generating function.
 
